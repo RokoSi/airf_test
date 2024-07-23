@@ -1,0 +1,50 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+  webserver:
+    image: apache/airflow:2.5.1
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: 'FLCvhQP9IQWtMCg6Af1ugEUOjQ5qSy0Q4yhEu1IEZ98='
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'True'
+      AIRFLOW__WEBSERVER__WORKERS: 1
+      _PIP_ADDITIONAL_REQUIREMENTS: "apache-airflow[password]"
+      AIRFLOW__WEBSERVER__AUTH_BACKEND: "airflow.contrib.auth.backends.password_auth"
+      PYTHONPATH: "/opt/airflow/dags/"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    ports:
+      - "8080:8080"
+    command: webserver
+
+
+  scheduler:
+    image: apache/airflow:2.5.1
+    depends_on:
+      - webserver
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: 'FLCvhQP9IQWtMCg6Af1ugEUOjQ5qSy0Q4yhEu1IEZ98='
+      PYTHONPATH: "/opt/airflow/dags/"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    command: scheduler
+
+volumes:
+  postgres-db-volume:
